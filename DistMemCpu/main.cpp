@@ -1,4 +1,3 @@
-
 /*
 This kmeans clustering algorithm was implemented using this tutorial:
 https://reasonabledeviations.com/2019/10/02/k-means-in-cpp/. Modifications to
@@ -12,6 +11,7 @@ parsing a different dataset.
 #include <vector>
 
 #include "csv.hpp"
+#include <mpi.h>
 
 struct Point {
   double x, y, z; // coordinates
