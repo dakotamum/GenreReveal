@@ -45,7 +45,7 @@ void kMeansClustering(int epochs, int k, std::string category1,
   std::vector<Point> points = readcsv(category1, category2, category3); // read from file
 
   std::vector<Point> centroids;
-  srand(time(0)); // need to set the random seed
+  srand(100); // need to set the random seed
   for (int i = 0; i < k; ++i) {
     centroids.push_back(points.at(rand() % points.size()));
   }
