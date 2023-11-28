@@ -12,7 +12,7 @@ parsing a different dataset.
 
 #include "csv.hpp"
 
-using namespace std;
+// using namespace std;
 
 struct Point {
   double x, y, z; // coordinates
@@ -30,32 +30,32 @@ struct Point {
   }
 };
 
-vector<Point> readcsv(std::string cat1, std::string cat2, std::string cat3) {
-  vector<Point> points;
+std::vector<Point> readcsv(std::string cat1, std::string cat2, std::string cat3) {
+  std::vector<Point> points;
   std::vector<Point> currentLine;
-  csv::CSVReader reader("tracks_features.csv");
-  for (csv::CSVRow &row : reader) {
+  csv::CSVReader reader("./tracks_features.csv");
+for (csv::CSVRow &row : reader) {
     points.push_back(Point(row[cat1].get<double>(), row[cat2].get<double>(),
                            row[cat3].get<double>()));
-  }
+}
   return points;
 }
 
 void kMeansClustering(int epochs, int k, std::string category1,
                       std::string category2, std::string category3) {
-  vector<Point> points = readcsv(category1, category2, category3); // read from file
+  std::vector<Point> points = readcsv(category1, category2, category3); // read from file
 
-  vector<Point> centroids;
+  std::vector<Point> centroids;
   srand(time(0)); // need to set the random seed
   for (int i = 0; i < k; ++i) {
     centroids.push_back(points.at(rand() % points.size()));
   }
 
-  for (vector<Point>::iterator c = begin(centroids); c != end(centroids); ++c) {
+  for (std::vector<Point>::iterator c = begin(centroids); c != end(centroids); ++c) {
     // quick hack to get cluster index
     int clusterId = c - begin(centroids);
 
-    for (vector<Point>::iterator it = points.begin(); it != points.end();
+    for (std::vector<Point>::iterator it = points.begin(); it != points.end();
          ++it) {
 
       Point p = *it;
@@ -68,8 +68,8 @@ void kMeansClustering(int epochs, int k, std::string category1,
     }
   }
 
-  vector<int> nPoints;
-  vector<double> sumX, sumY, sumZ;
+  std::vector<int> nPoints;
+  std::vector<double> sumX, sumY, sumZ;
 
   // Initialize with zeroes
   for (int j = 0; j < k; ++j) {
@@ -80,7 +80,7 @@ void kMeansClustering(int epochs, int k, std::string category1,
   }
 
   // Iterate over points to append data to centroids
-  for (vector<Point>::iterator it = points.begin(); it != points.end(); ++it) {
+  for (std::vector<Point>::iterator it = points.begin(); it != points.end(); ++it) {
     int clusterId = it->cluster;
     nPoints[clusterId] += 1;
     sumX[clusterId] += it->x;
@@ -91,20 +91,20 @@ void kMeansClustering(int epochs, int k, std::string category1,
   }
 
   // Compute the new centroids
-  for (vector<Point>::iterator c = begin(centroids); c != end(centroids); ++c) {
+  for (std::vector<Point>::iterator c = begin(centroids); c != end(centroids); ++c) {
     int clusterId = c - begin(centroids);
     c->x = sumX[clusterId] / nPoints[clusterId];
     c->y = sumY[clusterId] / nPoints[clusterId];
     c->z = sumZ[clusterId] / nPoints[clusterId];
   }
 
-  ofstream myfile;
+  std::ofstream myfile;
   myfile.open("tracks_output.csv");
-  myfile << category1 << "," << category2 << "," << category3 << ",c" << endl;
+  myfile << category1 << "," << category2 << "," << category3 << ",c" << std::endl;
 
-  for (vector<Point>::iterator it = points.begin(); it != points.end(); ++it) {
+  for (std::vector<Point>::iterator it = points.begin(); it != points.end(); ++it) {
     myfile << it->x << "," << it->y << "," << it->z << "," << it->cluster
-           << endl;
+           << std::endl;
   }
   myfile.close();
 }
