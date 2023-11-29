@@ -50,51 +50,55 @@ void kMeansClustering(int epochs, int k, std::string category1,
     centroids.push_back(points.at(rand() % points.size()));
   }
 
-  for (std::vector<Point>::iterator c = begin(centroids); c != end(centroids); ++c) {
-    // quick hack to get cluster index
-    int clusterId = c - begin(centroids);
+  for (int e = 0; e < epochs; e++)
+  {
+    std::cout << e << std::endl;
+    for (std::vector<Point>::iterator c = begin(centroids); c != end(centroids); ++c) {
+      // quick hack to get cluster index
+      int clusterId = c - begin(centroids);
 
-    for (std::vector<Point>::iterator it = points.begin(); it != points.end();
-         ++it) {
+      for (std::vector<Point>::iterator it = points.begin(); it != points.end();
+          ++it) {
 
-      Point p = *it;
-      double dist = c->distance(p);
-      if (dist < p.minDist) {
-        p.minDist = dist;
-        p.cluster = clusterId;
+        Point p = *it;
+        double dist = c->distance(p);
+        if (dist < p.minDist) {
+          p.minDist = dist;
+          p.cluster = clusterId;
+        }
+        *it = p;
       }
-      *it = p;
     }
-  }
 
-  std::vector<int> nPoints;
-  std::vector<double> sumX, sumY, sumZ;
+    std::vector<int> nPoints;
+    std::vector<double> sumX, sumY, sumZ;
 
-  // Initialize with zeroes
-  for (int j = 0; j < k; ++j) {
-    nPoints.push_back(0);
-    sumX.push_back(0.0);
-    sumY.push_back(0.0);
-    sumZ.push_back(0.0);
-  }
+    // Initialize with zeroes
+    for (int j = 0; j < k; ++j) {
+      nPoints.push_back(0);
+      sumX.push_back(0.0);
+      sumY.push_back(0.0);
+      sumZ.push_back(0.0);
+    }
 
-  // Iterate over points to append data to centroids
-  for (std::vector<Point>::iterator it = points.begin(); it != points.end(); ++it) {
-    int clusterId = it->cluster;
-    nPoints[clusterId] += 1;
-    sumX[clusterId] += it->x;
-    sumY[clusterId] += it->y;
-    sumZ[clusterId] += it->z;
+    // Iterate over points to append data to centroids
+    for (std::vector<Point>::iterator it = points.begin(); it != points.end(); ++it) {
+      int clusterId = it->cluster;
+      nPoints[clusterId] += 1;
+      sumX[clusterId] += it->x;
+      sumY[clusterId] += it->y;
+      sumZ[clusterId] += it->z;
 
-    it->minDist = __DBL_MAX__; // reset distance
-  }
+      it->minDist = __DBL_MAX__; // reset distance
+    }
 
-  // Compute the new centroids
-  for (std::vector<Point>::iterator c = begin(centroids); c != end(centroids); ++c) {
-    int clusterId = c - begin(centroids);
-    c->x = sumX[clusterId] / nPoints[clusterId];
-    c->y = sumY[clusterId] / nPoints[clusterId];
-    c->z = sumZ[clusterId] / nPoints[clusterId];
+    // Compute the new centroids
+    for (std::vector<Point>::iterator c = begin(centroids); c != end(centroids); ++c) {
+      int clusterId = c - begin(centroids);
+      c->x = sumX[clusterId] / nPoints[clusterId];
+      c->y = sumY[clusterId] / nPoints[clusterId];
+      c->z = sumZ[clusterId] / nPoints[clusterId];
+    }
   }
 
   std::ofstream myfile;
@@ -109,9 +113,18 @@ void kMeansClustering(int epochs, int k, std::string category1,
 }
 
 int main(int argv, char *argc[]) {
+  MPI_Init(NULL, NULL);
+  int rank, size;
+
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+  std::cout << "I am rank " << rank << std::endl;
+
   int numEpochs = 10;
   int k = 3;
-  kMeansClustering(numEpochs, k, "danceability", "loudness",
+  if (rank == 0)
+    kMeansClustering(numEpochs, k, "danceability", "loudness",
                    "instrumentalness");
   return 0;
 }
