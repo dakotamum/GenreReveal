@@ -86,6 +86,8 @@ void kMeansClustering_serial_verification(int epochs, int k, std::vector<Point> 
     for (std::vector<Point>::iterator c = begin(origCentroids); c != end(origCentroids); ++c) {
       int clusterId = c - begin(origCentroids);
       std::cout << "centroid " << clusterId << ": " <<  c->x << ", " << c->y << ", " << c->z << std::endl;
+      std::cout << "     counts: " << nPoints[clusterId] << std::endl;
+      std::cout << "     sums: " << sumX[clusterId] << ", " << sumY[clusterId] << ", " << sumZ[clusterId] << std::endl;
       c->x = sumX[clusterId] / nPoints[clusterId];
       c->y = sumY[clusterId] / nPoints[clusterId];
       c->z = sumZ[clusterId] / nPoints[clusterId];
@@ -137,7 +139,7 @@ int main(int argv, char *argc[]) {
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
   int k = 3;
-  int epochs = 3;
+  int epochs = 5;
 
   std::vector<int> sendCounts(size);
   std::vector<int> scatterDisplacements(size, 0);
@@ -220,19 +222,13 @@ int main(int argv, char *argc[]) {
     std::cout << "MPI epoch" << e << "************" << std::endl;
       for (int j = 0; j < k; ++j) {
         std::cout << "centroid " << j << ": " <<  centroids[j].x << ", " << centroids[j].y << ", " << centroids[j].z << std::endl;
-        centroids[j].x = globalClusterSums[j * 3] / globalClusterCounts[j * 3];
-        centroids[j].y = globalClusterSums[j * 3 + 1] / globalClusterCounts[j * 3 + 1];
-        centroids[j].z = globalClusterSums[j * 3 + 2] / globalClusterCounts[j * 3 + 2];
+        centroids[j].x = globalClusterSums[j * 3] / globalClusterCounts[j];
+        centroids[j].y = globalClusterSums[j * 3 + 1] / globalClusterCounts[j];
+        centroids[j].z = globalClusterSums[j * 3 + 2] / globalClusterCounts[j];
 
         std::cout << "    sums: " <<  globalClusterSums[j * 3] << ", " << globalClusterSums[j * 3 + 1] << ", " << globalClusterSums[j * 3 + 2] << std::endl;
-        std::cout << "    counts: " <<  globalClusterCounts[j * 3] << ", " << globalClusterCounts[j * 3 + 1] << ", " << globalClusterCounts[j * 3 + 2] << std::endl;
+        std::cout << "    counts: " <<  globalClusterCounts[j] << ", " << globalClusterCounts[j] << ", " << globalClusterCounts[j] << std::endl;
         std::cout << "    new centroid " << ": " <<  centroids[j].x << ", " << centroids[j].y << ", " << centroids[j].z << std::endl;
-        // globalClusterSums[j*3] = 0;
-        // globalClusterSums[j*3 + 1] = 0;
-        // globalClusterSums[j*3 + 2] = 0;
-        // globalClusterCounts[i*3] = 0;
-        // globalClusterCounts[i*3 + 1] = 0;
-        // globalClusterCounts[i*3 + 2] = 0;
       }
 
     // broadcast centroids with their updated locations
