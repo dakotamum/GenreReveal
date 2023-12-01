@@ -2,23 +2,26 @@
 cmake_minimum_required(VERSION 3.9)
 project(GenreReveal)
 set(CMAKE_CXX_STANDARD 17)
-set(SOURCE_FILES main.cpp)
-# Clone csv-parser
-set(CSVPARSER_DIR ${CMAKE_SOURCE_DIR}/external/lib/csvparser)
-if(NOT EXISTS ${CSVPARSER_DIR})
+
+# set the output directory for executables
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/dist/bin)
+
+# clone csv-parser
+set(csv-parser_dir ${CMAKE_SOURCE_DIR}/csv-parser)
+if(NOT EXISTS ${csv-parser_dir})
     find_package(Git REQUIRED)
     execute_process(
-        COMMAND ${GIT_EXECUTABLE} clone https://github.com/vincentlaucsb/csv-parser.git ${CSVPARSER_DIR}
+        COMMAND ${GIT_EXECUTABLE} clone https://github.com/vincentlaucsb/csv-parser.git ${csv-parser_dir}
     )
 endif()
-# Add the csv-parser CMake files to the project
-add_subdirectory(${CSVPARSER_DIR})
-include_directories(${CSVPARSER_DIR}/include)
-add_executable(${PROJECT_NAME} ${SOURCE_FILES})
-# Link the csv-parser library with our executable
-target_link_libraries(${PROJECT_NAME} PUBLIC csv PRIVATE gcov)
-configure_file(
-    "${CMAKE_SOURCE_DIR}/plot.py"
-    "${CMAKE_BINARY_DIR}/plot.py"
-    COPYONLY
-)
+# link csv-parser library with the project
+add_subdirectory(csv-parser)
+include_directories(${csv-parser_dir}/single_include)
+
+# include each subdirectory
+add_subdirectory(Serial)
+add_subdirectory(DistMemCpu)
+# add_subdirectory(OpenMp)
+
+# copy python script to build directory
+configure_file(${CMAKE_SOURCE_DIR}/plot.py ${CMAKE_BINARY_DIR}/dist/bin/plot.py COPYONLY)
