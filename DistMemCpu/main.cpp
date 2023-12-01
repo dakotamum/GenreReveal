@@ -29,6 +29,7 @@ struct Point {
   }
 };
 
+// reads specified csv file at the three specified columns
 std::vector<Point> readcsv(std::string cat1, std::string cat2, std::string cat3) {
   std::vector<Point> points;
   std::vector<Point> currentLine;
@@ -59,7 +60,6 @@ void kMeansClustering_serial_verification(int epochs, int k, std::vector<Point> 
         *it = p;
       }
     }
-
     std::vector<int> nPoints;
     std::vector<double> sumX, sumY, sumZ;
 
@@ -85,9 +85,6 @@ void kMeansClustering_serial_verification(int epochs, int k, std::vector<Point> 
     // Compute the new centroids
     for (std::vector<Point>::iterator c = begin(origCentroids); c != end(origCentroids); ++c) {
       int clusterId = c - begin(origCentroids);
-      std::cout << "centroid " << clusterId << ": " <<  c->x << ", " << c->y << ", " << c->z << std::endl;
-      std::cout << "     counts: " << nPoints[clusterId] << std::endl;
-      std::cout << "     sums: " << sumX[clusterId] << ", " << sumY[clusterId] << ", " << sumZ[clusterId] << std::endl;
       c->x = sumX[clusterId] / nPoints[clusterId];
       c->y = sumY[clusterId] / nPoints[clusterId];
       c->z = sumZ[clusterId] / nPoints[clusterId];
@@ -113,7 +110,7 @@ int main(int argv, char *argc[]) {
   MPI_Init(NULL, NULL);
   int rank, size;
 
-// Create the datatype
+// create the MPI data type corresponding to the Point struct
   MPI_Datatype point_type;
   int lengths[5] = { 1, 1, 1, 1, 1 };
   MPI_Aint displacements[5];
@@ -131,37 +128,39 @@ int main(int argv, char *argc[]) {
   displacements[3] = MPI_Aint_diff(displacements[3], base_address);
   displacements[4] = MPI_Aint_diff(displacements[4], base_address);
   MPI_Datatype types[5] = { MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT, MPI_DOUBLE };
-
   MPI_Type_create_struct(5, lengths, displacements, types, &point_type);
   MPI_Type_commit(&point_type);
 
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+  // specified number of categories and epochs
   int k = 3;
   int epochs = 5;
 
+  // declaration of vectors used in the various computations
   std::vector<int> sendCounts(size);
   std::vector<int> scatterDisplacements(size, 0);
-  std::vector<Point> origPoints(5);
-  std::vector<Point> globalPoints(5);
-  std::vector<Point> origCentroids(5);
-  std::vector<Point> centroids(k);
   std::vector<int> globalClusterCounts(k, 0);
   std::vector<double> globalClusterSums(k*3, 0);
+  std::vector<Point> origPoints;
+  std::vector<Point> globalPoints;
+  std::vector<Point> origCentroids;
+  std::vector<Point> centroids(k);
 
   if (rank == 0) {
     origPoints = readcsv("danceability", "loudness", "valence"); // read from file
+    // make copy of the points so we can use the original points for serial verification
     globalPoints = origPoints;
-
     srand(100); // need to set the random seed
 
+    // set centroids initially to random points
     for (int i = 0; i < k; ++i) {
       centroids[i] = globalPoints.at(rand() % globalPoints.size());
     }
     origCentroids = centroids;
 
-    // Calculate send_counts and displacements
+    // calculate sendCounts and displacements to be used in the scatter operation
     int elementsPerProcess = globalPoints.size() / size;
     int remainingElements = globalPoints.size() % size;
     int displacement = 0;
@@ -174,10 +173,12 @@ int main(int argv, char *argc[]) {
       displacement += sendCounts[i];
     }
   }
+  // broadcast send counts, displacements, and centroids to all ranks
   MPI_Bcast(sendCounts.data(), size, MPI_INT, 0, MPI_COMM_WORLD);
   MPI_Bcast(scatterDisplacements.data(), size, MPI_INT, 0, MPI_COMM_WORLD);
   MPI_Bcast(centroids.data(), k, point_type, 0, MPI_COMM_WORLD);
 
+  // get chunk of points to work on
   std::vector<Point> localPoints(sendCounts[rank]);
   MPI_Scatterv(globalPoints.data(), sendCounts.data(), scatterDisplacements.data(),
                point_type, localPoints.data(), sendCounts[rank], point_type, 0,
@@ -185,11 +186,11 @@ int main(int argv, char *argc[]) {
 
   for (int e = 0; e < epochs; e++)
   {
-    // find cluster for each point ----------------
+    // find cluster for each point
     for (std::vector<Point>::iterator c = begin(centroids); c != end(centroids); ++c) {
       // quick hack to get cluster index
       int clusterId = c - begin(centroids);
-
+      // find minimum distance and assign point to a cluster accordingly
       for (std::vector<Point>::iterator it = localPoints.begin(); it != localPoints.end(); ++it) {
         Point p = *it;
         double dist = c->distance(p);
@@ -201,9 +202,11 @@ int main(int argv, char *argc[]) {
       }
     }
 
-    // reduction to get the global cluster sums
+    // for storing local cluster counts and distance sums
     std::vector<int> localClusterCounts(k, 0);
     std::vector<double> localClusterSums(k*3, 0);
+
+    // iterate over local points and add up cluster counts and sums
     for (std::vector<Point>::iterator it = localPoints.begin(); it != localPoints.end(); ++it) {
       Point p = *it;
       localClusterCounts[p.cluster]++;
@@ -213,22 +216,16 @@ int main(int argv, char *argc[]) {
       it->minDist = __DBL_MAX__; // reset distance
     }
 
-    // reduce both cluster counts and cluster distance sums
+    // reduce cluster counts and cluster distance sums to the global vectors
     MPI_Reduce(localClusterCounts.data(), globalClusterCounts.data(), k, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(localClusterSums.data(), globalClusterSums.data(), k * 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
-    // compute new cluster locations ----------------
+    // compute new cluster locations
     if (rank == 0) {
-    std::cout << "MPI epoch" << e << "************" << std::endl;
       for (int j = 0; j < k; ++j) {
-        std::cout << "centroid " << j << ": " <<  centroids[j].x << ", " << centroids[j].y << ", " << centroids[j].z << std::endl;
         centroids[j].x = globalClusterSums[j * 3] / globalClusterCounts[j];
         centroids[j].y = globalClusterSums[j * 3 + 1] / globalClusterCounts[j];
         centroids[j].z = globalClusterSums[j * 3 + 2] / globalClusterCounts[j];
-
-        std::cout << "    sums: " <<  globalClusterSums[j * 3] << ", " << globalClusterSums[j * 3 + 1] << ", " << globalClusterSums[j * 3 + 2] << std::endl;
-        std::cout << "    counts: " <<  globalClusterCounts[j] << ", " << globalClusterCounts[j] << ", " << globalClusterCounts[j] << std::endl;
-        std::cout << "    new centroid " << ": " <<  centroids[j].x << ", " << centroids[j].y << ", " << centroids[j].z << std::endl;
       }
 
     // broadcast centroids with their updated locations
@@ -240,7 +237,10 @@ int main(int argv, char *argc[]) {
 
   if (rank == 0)
   {
+    // run serial verification
     kMeansClustering_serial_verification(epochs, k, globalPoints, centroids, origPoints, origCentroids);
+
+    // output resultant points with their assigned clusters to file
     std::ofstream myfile;
     myfile.open("tracks_output.csv");
     myfile << "danceability" << "," << "loudness" << "," << "valence" << ",c" << std::endl;
