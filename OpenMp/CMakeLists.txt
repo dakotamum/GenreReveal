@@ -10,7 +10,7 @@ endif()
 add_executable(openmp_exec ${openmp_srcs})
 # Link the csv-parser library with our executable
 set_target_properties(distmemcpu_exec PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/dist/bin OUTPUT_NAME DistMemCpu)
-target_link_libraries(openmp_exec PRIVATE csv gcov)
+target_link_libraries(openmp_exec PRIVATE shared_lib)
 if(OpenMP_CXX_FOUND)
     target_link_libraries(openmp_exec PUBLIC OpenMP::OpenMP_CXX)
 endif()

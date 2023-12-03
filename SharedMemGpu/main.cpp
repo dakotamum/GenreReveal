@@ -11,76 +11,10 @@ parsing a different dataset.
 #include <vector>
 
 #include "cuda_kMeans.cuh"
-#include "csv.hpp"
+#include "readcsv.hpp"
+#include "serialVerify.hpp"
 
 using namespace std;
-
-vector<Point> readcsv(std::string cat1, std::string cat2, std::string cat3) {
-  vector<Point> points;
-  std::vector<Point> currentLine;
-  csv::CSVReader reader("tracks_features.csv");
-  for (csv::CSVRow &row : reader) {
-    points.push_back(Point(row[cat1].get<double>(), row[cat2].get<double>(),
-                           row[cat3].get<double>()));
-  }
-  return points;
-}
-
-void kMeansClustering_serial(int epochs, int k, vector<Point> &points, vector<Point> &centroids) {
-
-  for (int e = 0; e < epochs; e++)
-  {
-    std::cout << "Serial epoch:" << e << std::endl;
-    for (std::vector<Point>::iterator c = begin(centroids); c != end(centroids); ++c) {
-      // quick hack to get cluster index
-      int clusterId = c - begin(centroids);
-
-      for (std::vector<Point>::iterator it = points.begin(); it != points.end();
-          ++it) {
-
-        Point p = *it;
-        double dist = c->distance(p);
-        if (dist < p.minDist) {
-          p.minDist = dist;
-          p.cluster = clusterId;
-        }
-        *it = p;
-      }
-    }
-
-    std::vector<int> nPoints;
-    std::vector<double> sumX, sumY, sumZ;
-
-    // Initialize with zeroes
-    for (int j = 0; j < k; ++j) {
-      nPoints.push_back(0);
-      sumX.push_back(0.0);
-      sumY.push_back(0.0);
-      sumZ.push_back(0.0);
-    }
-
-    // Iterate over points to append data to centroids
-    for (std::vector<Point>::iterator it = points.begin(); it != points.end(); ++it) {
-      int clusterId = it->cluster;
-      nPoints[clusterId] += 1;
-      sumX[clusterId] += it->x;
-      sumY[clusterId] += it->y;
-      sumZ[clusterId] += it->z;
-
-      it->minDist = __DBL_MAX__; // reset distance
-    }
-
-
-    // Compute the new centroids
-    for (std::vector<Point>::iterator c = begin(centroids); c != end(centroids); ++c) {
-      int clusterId = c - begin(centroids);
-      c->x = sumX[clusterId] / nPoints[clusterId];
-      c->y = sumY[clusterId] / nPoints[clusterId];
-      c->z = sumZ[clusterId] / nPoints[clusterId];
-    }
-  }
-}
-
 
 int main(int argv, char *argc[]) {
   int numEpochs = 5;
@@ -109,8 +43,10 @@ int main(int argv, char *argc[]) {
   Cuda_KMeans::do_cuda_kMeans(numEpochs, k, category1, category2, category3, 
             points_arr, centroids_arr, points_size, centroids_size);
 
+  std::vector<Point> implPoints(points_size); // Create a vector of the same size as the array
+  std::copy(points_arr, points_arr + points_size, implPoints.begin());
 
-  kMeansClustering_serial(numEpochs, k, points, centroids);
+  kMeansClustering_serial(numEpochs, k, implPoints, points, centroids);
 
   // Validate serial results with cuda
   int error_count = 0;

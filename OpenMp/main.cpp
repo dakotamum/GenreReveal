@@ -17,6 +17,10 @@ parsing a different dataset.
 #include <time.h>
 #include <sys/time.h>
 
+#include "Point.hpp"
+#include "readcsv.hpp"
+#include "serialVerify.hpp"
+
 using namespace std;
 
 double get_wall_time(){
@@ -27,34 +31,6 @@ double get_wall_time(){
     }
     return (double)time.tv_sec + (double)time.tv_usec * .000001;
 }
-
-struct Point {
-  double x, y, z; // coordinates
-  int cluster;    // no default cluster
-  double minDist; // default infinite dist to nearest cluster
-
-  Point() : x(0.0), y(0.0), z(0.0), cluster(-1), minDist(__DBL_MAX__) {}
-
-  Point(double x, double y, double z)
-      : x(x), y(y), z(z), cluster(-1), minDist(__DBL_MAX__) {}
-
-  double distance(Point p) {
-    return (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y) +
-           (p.z - z) * (p.z - z);
-  }
-};
-
-vector<Point> readcsv(std::string cat1, std::string cat2, std::string cat3) {
-  vector<Point> points;
-  std::vector<Point> currentLine;
-  csv::CSVReader reader("tracks_features.csv");
-  for (csv::CSVRow &row : reader) {
-    points.push_back(Point(row[cat1].get<double>(), row[cat2].get<double>(),
-                           row[cat3].get<double>()));
-  }
-  return points;
-}
-
 
 void kMeansClustering_serial(int epochs, int k, vector<Point> &points, vector<Point> &centroids) {
   
@@ -168,12 +144,13 @@ int main(int argv, char *argc[]) {
   int thread_count = strtol(argc[1], NULL, 10);
   int numEpochs = 5;
   int k = 3;
-  char category1[] = "danceability";
-  char category2[] = "loudness";
-  char category3[] = "instrumentalness";
+  string category1 = "danceability";
+  string category2 = "loudness";
+  string category3 = "instrumentalness";
 
   double wallStart = get_wall_time();
   vector<Point> points = readcsv(category1, category2, category3); // read from file
+  vector<Point> originalPoints = points;
   vector<Point> centroids;
   double wallEnd = get_wall_time();
 
@@ -183,27 +160,11 @@ int main(int argv, char *argc[]) {
   for (int i = 0; i < k; ++i) {
     centroids.push_back(points.at(rand() % points.size()));
   }
+  vector<Point> originalCentroids = centroids;
   vector<Point> serial = points; 
 
-
   kMeansClustering(numEpochs, k, points, centroids, thread_count);
-  kMeansClustering_serial(numEpochs, k, serial, centroids);
-
-  // Validate serial results with cuda
-  int error_count = 0;
-  for (int i = 0; i < points.size(); i++)
-  {
-    if (points[i].cluster != serial[i].cluster)
-    {
-      error_count++;
-    }
-  }
-  if (error_count > 0)
-    printf("%d out of %d point clusters do not match", error_count, points.size());
-  else
-    printf("Parrallel implementation verified with serial");
-
-  printf("\n");
+  kMeansClustering_serial(numEpochs, k, points, originalPoints, originalCentroids);
 
   wallStart = get_wall_time();
   ofstream myfile;

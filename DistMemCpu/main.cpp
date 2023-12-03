@@ -147,7 +147,7 @@ int main(int argv, char *argc[]) {
   if (rank == 0)
   {
     // run serial verification
-    kMeansClustering_serial(epochs, k, globalPoints, centroids, origPoints, origCentroids);
+    kMeansClustering_serial(epochs, k, globalPoints, origPoints, origCentroids);
 
     // output resultant points with their assigned clusters to file
     std::ofstream myfile;

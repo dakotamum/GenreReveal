@@ -43,8 +43,7 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
     CUDA::cudart  # Link the CUDA runtime library
     PRIVATE
-    csv
-    gcov
+    shared_lib 
     # Add any other necessary libraries or dependencies
 )
 

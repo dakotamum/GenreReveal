@@ -53,7 +53,6 @@ void kMeansClustering(int epochs, int k, std::string category1,
 
   for (int e = 0; e < epochs; e++)
   {
-    std::cout << e << std::endl;
     for (std::vector<Point>::iterator c = begin(centroids); c != end(centroids); ++c) {
       // quick hack to get cluster index
       int clusterId = c - begin(centroids);

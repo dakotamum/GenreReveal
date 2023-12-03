@@ -3,7 +3,7 @@
 #include "csv.hpp"
 #include "Point.hpp"
 
-void kMeansClustering_serial(int epochs, int k, std::vector<Point> mpiPoints, std::vector<Point> mpiCentroids, std::vector<Point> origPoints, std::vector<Point> origCentroids) {
+void kMeansClustering_serial(int epochs, int k, std::vector<Point> implPoints, std::vector<Point> origPoints, std::vector<Point> origCentroids) {
   for (int e = 0; e < epochs; e++)
   {
     for (std::vector<Point>::iterator c = begin(origCentroids); c != end(origCentroids); ++c) {
@@ -52,11 +52,11 @@ void kMeansClustering_serial(int epochs, int k, std::vector<Point> mpiPoints, st
     }
   }
 
-  // Validate serial results with MPI
+  // Validate serial results with implementation
     int error_count = 0;
-    for (int i = 0; i < mpiPoints.size(); i++)
+    for (int i = 0; i < implPoints.size(); i++)
     {
-      if (mpiPoints[i].cluster != origPoints[i].cluster)
+      if (implPoints[i].cluster != origPoints[i].cluster)
       {
         error_count++;
       }
