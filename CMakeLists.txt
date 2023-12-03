@@ -22,6 +22,7 @@ include_directories(${csv-parser_dir}/single_include)
 add_subdirectory(Serial)
 add_subdirectory(DistMemCpu)
 add_subdirectory(OpenMp)
+add_subdirectory(SharedMemGpu)
 
 # copy python script to build directory
 configure_file(${CMAKE_SOURCE_DIR}/plot.py ${CMAKE_BINARY_DIR}/dist/bin/plot.py COPYONLY)
