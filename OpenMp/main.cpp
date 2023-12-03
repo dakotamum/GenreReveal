@@ -110,6 +110,8 @@ void kMeansClustering_serial(int epochs, int k, vector<Point> &points, vector<Po
 void kMeansClustering(int epochs, int k, vector<Point> &points, vector<Point> &centroids, int thread_count) {
 
   double startTime = get_wall_time();
+#pragma omp parralel num_threads(thread_count)
+  {
   for (int e = 0; e < epochs; e++)
   {
     std::cout << "OpenMp epoch:" << e << std::endl;
@@ -117,8 +119,7 @@ void kMeansClustering(int epochs, int k, vector<Point> &points, vector<Point> &c
       // quick hack to get cluster index
       int clusterId = c;
       Point centroid = centroids[c];
-
-#pragma omp parallel for num_threads(thread_count)
+#pragma omp for
       for (int i = 0; i<points.size();++i) {
         Point p = points[i];
         double dist = centroid.distance(p);
@@ -134,15 +135,18 @@ void kMeansClustering(int epochs, int k, vector<Point> &points, vector<Point> &c
     std::vector<double> sumX, sumY, sumZ;
 
     // Initialize with zeroes
+#pragma omp critical 
+    {
     for (int j = 0; j < k; ++j) {
       nPoints.push_back(0);
       sumX.push_back(0.0);
       sumY.push_back(0.0);
       sumZ.push_back(0.0);
     }
+}
 
     // Iterate over points to append data to centroids
-#pragma omp parallel for num_threads(thread_count) 
+#pragma omp for
     for (int i = 0; i< points.size(); ++i) {
       int clusterId = points[i].cluster;
       nPoints[clusterId] += 1;
@@ -153,6 +157,7 @@ void kMeansClustering(int epochs, int k, vector<Point> &points, vector<Point> &c
       points[i].minDist = __DBL_MAX__; // reset distance
     }
   }
+}
   double endTime = get_wall_time();
   double totalTime = endTime - startTime;
   double averageTime = totalTime / epochs;
