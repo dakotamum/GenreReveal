@@ -12,11 +12,6 @@ if(NOT EXISTS ${CSVPARSER_DIR})
     )
 endif()
 
-# Add the csv-parser CMake files to the project
-add_subdirectory(${CSVPARSER_DIR})
-include_directories(${CSVPARSER_DIR}/include)
-
-
 # Locate CUDA
 find_package(CUDAToolkit REQUIRED)
 
