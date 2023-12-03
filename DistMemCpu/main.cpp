@@ -9,102 +9,11 @@ parsing a different dataset.
 #include <fstream>
 #include <iostream>
 #include <vector>
-
-#include "csv.hpp"
 #include <mpi.h>
 
-struct Point {
-  double x, y, z; // coordinates
-  int cluster;    // no default cluster
-  double minDist; // default infinite dist to nearest cluster
-
-  Point() : x(0.0), y(0.0), z(0.0), cluster(-1), minDist(__DBL_MAX__) {}
-
-  Point(double x, double y, double z)
-      : x(x), y(y), z(z), cluster(-1), minDist(__DBL_MAX__) {}
-
-  double distance(Point p) {
-    return (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y) +
-           (p.z - z) * (p.z - z);
-  }
-};
-
-// reads specified csv file at the three specified columns
-std::vector<Point> readcsv(std::string cat1, std::string cat2, std::string cat3) {
-  std::vector<Point> points;
-  std::vector<Point> currentLine;
-  csv::CSVReader reader("./tracks_features.csv");
-for (csv::CSVRow &row : reader) {
-    points.push_back(Point(row[cat1].get<double>(), row[cat2].get<double>(),
-                           row[cat3].get<double>()));
-}
-  return points;
-}
-
-void kMeansClustering_serial_verification(int epochs, int k, std::vector<Point> mpiPoints, std::vector<Point> mpiCentroids, std::vector<Point> origPoints, std::vector<Point> origCentroids) {
-  for (int e = 0; e < epochs; e++)
-  {
-    std::cout << "Serial epoch: " << e << " ------------" << std::endl;
-    for (std::vector<Point>::iterator c = begin(origCentroids); c != end(origCentroids); ++c) {
-      // quick hack to get cluster index
-      int clusterId = c - begin(origCentroids);
-
-      for (std::vector<Point>::iterator it = origPoints.begin(); it != origPoints.end();
-          ++it) {
-        Point p = *it;
-        double dist = c->distance(p);
-        if (dist < p.minDist) {
-          p.minDist = dist;
-          p.cluster = clusterId;
-        }
-        *it = p;
-      }
-    }
-    std::vector<int> nPoints;
-    std::vector<double> sumX, sumY, sumZ;
-
-    // Initialize with zeroes
-    for (int j = 0; j < k; ++j) {
-      nPoints.push_back(0);
-      sumX.push_back(0.0);
-      sumY.push_back(0.0);
-      sumZ.push_back(0.0);
-    }
-
-    // Iterate over points to append data to centroids
-    for (std::vector<Point>::iterator it = origPoints.begin(); it != origPoints.end(); ++it) {
-      int clusterId = it->cluster;
-      nPoints[clusterId] += 1;
-      sumX[clusterId] += it->x;
-      sumY[clusterId] += it->y;
-      sumZ[clusterId] += it->z;
-
-      it->minDist = __DBL_MAX__; // reset distance
-    }
-
-    // Compute the new centroids
-    for (std::vector<Point>::iterator c = begin(origCentroids); c != end(origCentroids); ++c) {
-      int clusterId = c - begin(origCentroids);
-      c->x = sumX[clusterId] / nPoints[clusterId];
-      c->y = sumY[clusterId] / nPoints[clusterId];
-      c->z = sumZ[clusterId] / nPoints[clusterId];
-    }
-  }
-
-  // Validate serial results with MPI
-    int error_count = 0;
-    for (int i = 0; i < mpiPoints.size(); i++)
-    {
-      if (mpiPoints[i].cluster != origPoints[i].cluster)
-      {
-        error_count++;
-      }
-    }
-    if (error_count > 0)
-      printf("%d out of %d point clusters do not match\n", error_count, origPoints.size());
-    else
-      printf("Distributed CPU implementation verified with serial\n");
-}
+#include "readcsv.hpp"
+#include "serialVerify.hpp"
+#include "Point.hpp"
 
 int main(int argv, char *argc[]) {
   MPI_Init(NULL, NULL);
@@ -114,7 +23,7 @@ int main(int argv, char *argc[]) {
   MPI_Datatype point_type;
   int lengths[5] = { 1, 1, 1, 1, 1 };
   MPI_Aint displacements[5];
-  struct Point dummy_point;
+  Point dummy_point;
   MPI_Aint base_address;
   MPI_Get_address(&dummy_point, &base_address);
   MPI_Get_address(&dummy_point.x, &displacements[0]);
@@ -238,7 +147,7 @@ int main(int argv, char *argc[]) {
   if (rank == 0)
   {
     // run serial verification
-    kMeansClustering_serial_verification(epochs, k, globalPoints, centroids, origPoints, origCentroids);
+    kMeansClustering_serial(epochs, k, globalPoints, centroids, origPoints, origCentroids);
 
     // output resultant points with their assigned clusters to file
     std::ofstream myfile;

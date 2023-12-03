@@ -19,6 +19,7 @@ add_subdirectory(csv-parser)
 include_directories(${csv-parser_dir}/single_include)
 
 # include each subdirectory
+add_subdirectory(SharedCode)
 add_subdirectory(Serial)
 add_subdirectory(DistMemCpu)
 # add_subdirectory(OpenMp)
