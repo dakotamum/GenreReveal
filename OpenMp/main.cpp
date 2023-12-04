@@ -16,7 +16,6 @@ parsing a different dataset.
 #include "csv.hpp"
 #include <time.h>
 #include <sys/time.h>
-
 #include "Point.hpp"
 #include "readcsv.hpp"
 #include "serialVerify.hpp"
@@ -35,7 +34,6 @@ double get_wall_time(){
 
 void kMeansClustering(int epochs, int k, vector<Point> &points, vector<Point> &centroids, int thread_count) {
 
-  double startTime = get_wall_time();
     int i;
     int clusterId;
     int e;
@@ -43,21 +41,26 @@ void kMeansClustering(int epochs, int k, vector<Point> &points, vector<Point> &c
     int c;
     double dist;
     int thread; 
-    std::vector<int> nPoints;
-    std::vector<double> sumX, sumY, sumZ;
-#pragma omp parallel num_threads(thread_count) default(none) shared(nPoints, sumX, sumY, sumZ, centroids, points, thread_count,k,epochs) private(thread, dist,c,j,e,clusterId,i)
+    std::vector<int> nPoints(k,0);
+    std::vector<double>sumX(k,0.0);
+    std::vector<double>sumY(k,0.0);
+    std::vector<double>sumZ(k,0.0);
+    omp_lock_t locks[k];
+  double startTime = get_wall_time();
+#pragma omp parallel num_threads(thread_count) default(none) shared(locks,nPoints, sumX, sumY, sumZ, centroids, points, thread_count,k,epochs) private(thread, dist,c,j,e,clusterId,i)
   {
+#pragma omp for
+  for (int i = 0; i < k; ++i){
+    omp_init_lock(&locks[i]);
+  }
   for (e = 0; e < epochs; e++)
   {
     thread = omp_get_thread_num();
-    if (thread == 0){
-	printf("OpenMp epoch: %d\n", e);
-    }
-#pragma omp for
+    printf("OpenMp epoch: %d\n", e);
     for ( c = 0; c<centroids.size(); c++) {
-      // quick hack to get cluster index
       clusterId = c;
       Point centroid = centroids[c];
+#pragma omp for
       for (i = 0; i<points.size();++i) {
         Point p = points[i];
         dist = centroid.distance(p);
@@ -67,36 +70,28 @@ void kMeansClustering(int epochs, int k, vector<Point> &points, vector<Point> &c
         }
         points[i] = p;
       }
-  }
-
-if (thread == 0){
-   nPoints.clear();
-   sumX.clear();
-   sumY.clear();
-   sumZ.clear();
-}
-#pragma omp barrier
-
-// Initialize with zeroes
-#pragma omp critical 
-    {
-    for (j = 0; j < k; ++j) {
-      nPoints.push_back(0);
-      sumX.push_back(0.0);
-      sumY.push_back(0.0);
-      sumZ.push_back(0.0);
     }
-}
+
+#pragma omp for
+    for (int i = 0; i < k; i++){
+	nPoints[i] = 0;
+	sumX[i] = 0.0;	
+	sumY[i] = 0.0;	
+	sumZ[i] = 0.0;	
+    }
+
 // Iterate over points to append data to centroids
-#pragma omp for 
+#pragma omp for
     for (i = 0; i< points.size(); ++i) {
       clusterId = points[i].cluster;
-      nPoints[clusterId] += 1;
-      sumX[clusterId] += points[i].x;
-      sumY[clusterId] += points[i].y;
-      sumZ[clusterId] += points[i].z;
-      points[i].minDist = __DBL_MAX__; // reset distance
-    }
+      omp_set_lock(&locks[clusterId]);
+	      nPoints[clusterId] += 1;
+	      sumX[clusterId] += points[i].x; 
+	      sumY[clusterId] +=  points[i].y; 
+	      sumZ[clusterId] +=  points[i].z; 
+	      points[i].minDist = __DBL_MAX__; // reset distance
+      omp_unset_lock(&locks[clusterId]);
+  }
 #pragma omp for
     for (int i = 0; i<centroids.size(); i++){
       int clusterId = i;
@@ -107,6 +102,10 @@ if (thread == 0){
       centroids[i] = c;
     }
   }
+#pragma omp for
+for (int i = 0; i<k; ++i){
+    omp_destroy_lock(&locks[i]);
+  }
 }
   double endTime = get_wall_time();
   double totalTime = endTime - startTime;
@@ -116,7 +115,7 @@ if (thread == 0){
 
 int main(int argv, char *argc[]) {
   int thread_count = strtol(argc[1], NULL, 10);
-  int numEpochs = 5;
+  int numEpochs = 10;
   int k = 3;
   string category1 = "danceability";
   string category2 = "loudness";
