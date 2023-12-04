@@ -32,70 +32,23 @@ double get_wall_time(){
     return (double)time.tv_sec + (double)time.tv_usec * .000001;
 }
 
-void kMeansClustering_serial(int epochs, int k, vector<Point> &points, vector<Point> &centroids) {
-  
-  double startTime = get_wall_time();
-  for (int e = 0; e < epochs; e++)
-  {
-    std::cout << "Serial epoch:" << e << std::endl;
-    for (std::vector<Point>::iterator c = begin(centroids); c != end(centroids); ++c) {
-      // quick hack to get cluster index
-      int clusterId = c - begin(centroids);
-
-      for (std::vector<Point>::iterator it = points.begin(); it != points.end();
-          ++it) {
-
-        Point p = *it;
-        double dist = c->distance(p);
-        if (dist < p.minDist) {
-          p.minDist = dist;
-          p.cluster = clusterId;
-        }
-        *it = p;
-      }
-    }
-
-    std::vector<int> nPoints;
-    std::vector<double> sumX, sumY, sumZ;
-
-    // Initialize with zeroes
-    for (int j = 0; j < k; ++j) {
-      nPoints.push_back(0);
-      sumX.push_back(0.0);
-      sumY.push_back(0.0);
-      sumZ.push_back(0.0);
-    }
-
-    // Iterate over points to append data to centroids
-    for (std::vector<Point>::iterator it = points.begin(); it != points.end(); ++it) {
-      int clusterId = it->cluster;
-      nPoints[clusterId] += 1;
-      sumX[clusterId] += it->x;
-      sumY[clusterId] += it->y;
-      sumZ[clusterId] += it->z;
-
-      it->minDist = __DBL_MAX__; // reset distance
-    }
-  }
-  double endTime = get_wall_time();
-  double totalTime = endTime - startTime;
-  double averageTime = totalTime / epochs;
-  printf("Algorithm took %f time to complete and averaged %f per epoch\n", totalTime, averageTime);
-}
 
 void kMeansClustering(int epochs, int k, vector<Point> &points, vector<Point> &centroids, int thread_count) {
 
   double startTime = get_wall_time();
-#pragma omp parralel num_threads(thread_count)
+#pragma omp parallel num_threads(thread_count)
   {
+  int thread = omp_get_thread_num();
   for (int e = 0; e < epochs; e++)
   {
-    std::cout << "OpenMp epoch:" << e << std::endl;
+    if (thread == 0){
+	std::cout << "OpenMp epoch:" << e << std::endl;
+    }
+#pragma omp for
     for (int c = 0; c<centroids.size(); c++) {
       // quick hack to get cluster index
       int clusterId = c;
       Point centroid = centroids[c];
-#pragma omp for
       for (int i = 0; i<points.size();++i) {
         Point p = points[i];
         double dist = centroid.distance(p);
@@ -122,15 +75,23 @@ void kMeansClustering(int epochs, int k, vector<Point> &points, vector<Point> &c
 }
 
     // Iterate over points to append data to centroids
-#pragma omp for
+#pragma omp for 
     for (int i = 0; i< points.size(); ++i) {
       int clusterId = points[i].cluster;
       nPoints[clusterId] += 1;
       sumX[clusterId] += points[i].x;
       sumY[clusterId] += points[i].y;
       sumZ[clusterId] += points[i].z;
-
       points[i].minDist = __DBL_MAX__; // reset distance
+    }
+#pragma omp for
+    for (int i = 0; i<centroids.size(); i++){
+      int clusterId = i;
+      Point c = centroids[i];
+      c.x = sumX[clusterId] / nPoints[clusterId];
+      c.y = sumY[clusterId] / nPoints[clusterId];
+      c.z = sumZ[clusterId] / nPoints[clusterId];
+      centroids[i] = c;
     }
   }
 }
@@ -148,6 +109,7 @@ int main(int argv, char *argc[]) {
   string category2 = "loudness";
   string category3 = "instrumentalness";
 
+  printf("Reading csv...\n");
   double wallStart = get_wall_time();
   vector<Point> points = readcsv(category1, category2, category3); // read from file
   vector<Point> originalPoints = points;
