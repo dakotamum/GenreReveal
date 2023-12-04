@@ -45,7 +45,7 @@ int main(int argv, char *argc[]) {
 
   // specified number of categories and epochs
   int k = 3;
-  int epochs = 5;
+  int epochs = 2;
 
   // declaration of vectors used in the various computations
   std::vector<int> sendCounts(size);
@@ -111,7 +111,7 @@ int main(int argv, char *argc[]) {
       }
     }
 
-    // for storing local cluster counts and distance sums
+    // for storing local cluster counts and coordinate sums
     std::vector<int> localClusterCounts(k, 0);
     std::vector<double> localClusterSums(k*3, 0);
 
@@ -136,18 +136,14 @@ int main(int argv, char *argc[]) {
         centroids[j].y = globalClusterSums[j * 3 + 1] / globalClusterCounts[j];
         centroids[j].z = globalClusterSums[j * 3 + 2] / globalClusterCounts[j];
       }
+    }
 
     // broadcast centroids with their updated locations
     MPI_Bcast(centroids.data(), k, point_type, 0, MPI_COMM_WORLD);
-    }
   }
   // unscatter the broken up global points vector
   MPI_Gatherv(localPoints.data(), sendCounts[rank], point_type, globalPoints.data(), sendCounts.data(), scatterDisplacements.data(), point_type, 0, MPI_COMM_WORLD);
 
-  if (rank == 0)
-  {
-    // run serial verification
-    kMeansClustering_serial(epochs, k, globalPoints, origPoints, origCentroids);
 
     // output resultant points with their assigned clusters to file
     std::ofstream myfile;
@@ -159,6 +155,10 @@ int main(int argv, char *argc[]) {
             << std::endl;
     }
     myfile.close();
+
+  if (rank == 0) {
+    // run serial verification
+    kMeansClustering_serial(epochs, k, globalPoints, origPoints, origCentroids);
   }
 
   MPI_Finalize();
