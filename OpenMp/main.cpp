@@ -36,22 +36,31 @@ double get_wall_time(){
 void kMeansClustering(int epochs, int k, vector<Point> &points, vector<Point> &centroids, int thread_count) {
 
   double startTime = get_wall_time();
-#pragma omp parallel num_threads(thread_count)
+    int i;
+    int clusterId;
+    int e;
+    int j;
+    int c;
+    double dist;
+    int thread; 
+    std::vector<int> nPoints;
+    std::vector<double> sumX, sumY, sumZ;
+#pragma omp parallel num_threads(thread_count) default(none) shared(nPoints, sumX, sumY, sumZ, centroids, points, thread_count,k,epochs) private(thread, dist,c,j,e,clusterId,i)
   {
-  int thread = omp_get_thread_num();
-  for (int e = 0; e < epochs; e++)
+  for (e = 0; e < epochs; e++)
   {
+    thread = omp_get_thread_num();
     if (thread == 0){
-	std::cout << "OpenMp epoch:" << e << std::endl;
+	printf("OpenMp epoch: %d\n", e);
     }
 #pragma omp for
-    for (int c = 0; c<centroids.size(); c++) {
+    for ( c = 0; c<centroids.size(); c++) {
       // quick hack to get cluster index
-      int clusterId = c;
+      clusterId = c;
       Point centroid = centroids[c];
-      for (int i = 0; i<points.size();++i) {
+      for (i = 0; i<points.size();++i) {
         Point p = points[i];
-        double dist = centroid.distance(p);
+        dist = centroid.distance(p);
         if (dist < p.minDist) {
           p.minDist = dist;
           p.cluster = clusterId;
@@ -60,24 +69,28 @@ void kMeansClustering(int epochs, int k, vector<Point> &points, vector<Point> &c
       }
   }
 
-    std::vector<int> nPoints;
-    std::vector<double> sumX, sumY, sumZ;
+if (thread == 0){
+   nPoints.clear();
+   sumX.clear();
+   sumY.clear();
+   sumZ.clear();
+}
+#pragma omp barrier
 
-    // Initialize with zeroes
+// Initialize with zeroes
 #pragma omp critical 
     {
-    for (int j = 0; j < k; ++j) {
+    for (j = 0; j < k; ++j) {
       nPoints.push_back(0);
       sumX.push_back(0.0);
       sumY.push_back(0.0);
       sumZ.push_back(0.0);
     }
 }
-
-    // Iterate over points to append data to centroids
+// Iterate over points to append data to centroids
 #pragma omp for 
-    for (int i = 0; i< points.size(); ++i) {
-      int clusterId = points[i].cluster;
+    for (i = 0; i< points.size(); ++i) {
+      clusterId = points[i].cluster;
       nPoints[clusterId] += 1;
       sumX[clusterId] += points[i].x;
       sumY[clusterId] += points[i].y;
