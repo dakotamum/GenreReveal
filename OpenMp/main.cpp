@@ -19,6 +19,7 @@ parsing a different dataset.
 #include "Point.hpp"
 #include "readcsv.hpp"
 #include "serialVerify.hpp"
+#include <string.h>
 
 using namespace std;
 
@@ -41,18 +42,17 @@ void kMeansClustering(int epochs, int k, vector<Point> &points, vector<Point> &c
     int c;
     double dist;
     int thread; 
-    std::vector<int> nPoints(k,0);
-    std::vector<double>sumX(k,0.0);
-    std::vector<double>sumY(k,0.0);
-    std::vector<double>sumZ(k,0.0);
-    omp_lock_t locks[k];
+    int nPoints[k];
+    memset(nPoints, 0, sizeof(int)*k);
+    double sumX[k];
+    memset(sumX, 0.0, sizeof(double)*k);
+    double sumY[k];
+    memset(sumY, 0.0,sizeof(double)*k);
+    double sumZ[k];
+    memset(sumZ, 0.0, sizeof(double)*k);
   double startTime = get_wall_time();
-#pragma omp parallel num_threads(thread_count) default(none) shared(locks,nPoints, sumX, sumY, sumZ, centroids, points, thread_count,k,epochs) private(thread, dist,c,j,e,clusterId,i)
+#pragma omp parallel num_threads(thread_count) default(none) shared(nPoints, sumX, sumY, sumZ, centroids, points, thread_count,k,epochs) private(thread, dist,c,j,e,clusterId,i)
   {
-#pragma omp for
-  for (int i = 0; i < k; ++i){
-    omp_init_lock(&locks[i]);
-  }
   for (e = 0; e < epochs; e++)
   {
     thread = omp_get_thread_num();
@@ -81,16 +81,14 @@ void kMeansClustering(int epochs, int k, vector<Point> &points, vector<Point> &c
     }
 
 // Iterate over points to append data to centroids
-#pragma omp for
+#pragma omp for reduction(+:sumX[clusterId]) reduction(+:sumY[clusterId]) reduction(+:sumZ[clusterId]) reduction(+:nPoints[clusterId])
     for (i = 0; i< points.size(); ++i) {
       clusterId = points[i].cluster;
-      omp_set_lock(&locks[clusterId]);
-	      nPoints[clusterId] += 1;
-	      sumX[clusterId] += points[i].x; 
-	      sumY[clusterId] +=  points[i].y; 
-	      sumZ[clusterId] +=  points[i].z; 
-	      points[i].minDist = __DBL_MAX__; // reset distance
-      omp_unset_lock(&locks[clusterId]);
+      nPoints[clusterId] += 1;
+      sumX[clusterId] += points[i].x; 
+      sumY[clusterId] +=  points[i].y; 
+      sumZ[clusterId] +=  points[i].z; 
+      points[i].minDist = __DBL_MAX__; // reset distance
   }
 #pragma omp for
     for (int i = 0; i<centroids.size(); i++){
@@ -102,10 +100,6 @@ void kMeansClustering(int epochs, int k, vector<Point> &points, vector<Point> &c
       centroids[i] = c;
     }
   }
-#pragma omp for
-for (int i = 0; i<k; ++i){
-    omp_destroy_lock(&locks[i]);
-  }
 }
   double endTime = get_wall_time();
   double totalTime = endTime - startTime;
@@ -115,7 +109,7 @@ for (int i = 0; i<k; ++i){
 
 int main(int argv, char *argc[]) {
   int thread_count = strtol(argc[1], NULL, 10);
-  int numEpochs = 10;
+  int numEpochs = 2;
   int k = 3;
   string category1 = "danceability";
   string category2 = "loudness";
