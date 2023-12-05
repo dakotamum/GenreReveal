@@ -13,6 +13,7 @@ parsing a different dataset.
 #include "Config.hpp"
 #include "Point.hpp"
 #include "readcsv.hpp"
+#include "timer.hpp"
 
 void kMeansClustering(int epochs, int k, std::string category1,
                       std::string category2, std::string category3, bool writeToFile) {
@@ -23,7 +24,7 @@ void kMeansClustering(int epochs, int k, std::string category1,
   for (int i = 0; i < k; ++i) {
     centroids.push_back(points.at(rand() % points.size()));
   }
-
+  double startTime = get_wall_time();
   for (int e = 0; e < epochs; e++)
   {
     for (std::vector<Point>::iterator c = begin(centroids); c != end(centroids); ++c) {
@@ -73,6 +74,10 @@ void kMeansClustering(int epochs, int k, std::string category1,
       c->z = sumZ[clusterId] / nPoints[clusterId];
     }
   }
+  double endTime = get_wall_time();
+  double totalTime = endTime - startTime;
+  double averageTime = totalTime / epochs;
+  printf("Algorithm took %f time to complete and averaged %f per epoch\n", totalTime, averageTime);
 
   // write results to output file
   if (writeToFile) {

@@ -5,6 +5,7 @@ set(lib_srcs
     Point.hpp
     readcsv.hpp
     serialVerify.hpp
+    timer.hpp
 )
 
 add_library(shared_lib ${lib_srcs})

@@ -5,6 +5,7 @@
 #include "cuda.h"
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
+#include "timer.hpp"
 
 /**
  * Kernel:      initializeSums_kernel
@@ -165,6 +166,7 @@ namespace Cuda_KMeans {
         int blockSize = 256;
         int numBlocks = (points_size + blockSize - 1) / blockSize;
 
+	  double startTime = get_wall_time();
         for (int e = 0; e < epochs; e++)
         {
             printf("Cuda Epoch %d\n", e);
@@ -176,6 +178,10 @@ namespace Cuda_KMeans {
             ResetClusters_kernel<<<1,1>>>(cuda_centroids, centroids_size, cuda_nPoints, cuda_sumX, cuda_sumY, cuda_sumZ);
             cudaDeviceSynchronize();
         }
+	  double endTime = get_wall_time();
+	  double totalTime = endTime - startTime;
+	  double averageTime = totalTime / epochs;
+	  printf("Algorithm took %f time to complete and averaged %f per epoch\n", totalTime, averageTime);
 
         // Copy points memory from device to host
         cudaMemcpy(points, cuda_points, points_size * sizeof(Point), cudaMemcpyDeviceToHost);

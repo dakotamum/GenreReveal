@@ -20,19 +20,11 @@ parsing a different dataset.
 #include "Point.hpp"
 #include "readcsv.hpp"
 #include "serialVerify.hpp"
+#include "timer.hpp"
 #include <string.h>
 
+
 using namespace std;
-
-double get_wall_time(){
-    struct timeval time;
-    if (gettimeofday(&time,NULL)){
-        //  Handle error
-        return 0;
-    }
-    return (double)time.tv_sec + (double)time.tv_usec * .000001;
-}
-
 
 void kMeansClustering(int epochs, int k, vector<Point> &points, vector<Point> &centroids, int thread_count) {
 

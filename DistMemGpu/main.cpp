@@ -15,6 +15,7 @@ parsing a different dataset.
 #include "cuda_kMeans.cuh"
 #include "readcsv.hpp"
 #include "serialVerify.hpp"
+#include "timer.hpp"
 
 using namespace std;
 
@@ -67,10 +68,17 @@ int main(int argc, char *argv[]) {
   std::vector<Point> origCentroids;
   std::vector<Point> centroids(k);
 
+  double startTime = get_wall_time();
+  double endTime;
+  double finalTime;
+  double averageTime;
   if (rank == 0) {
     printf("Reading CSV...\n");
     origPoints = readcsv(config.category1, config.category2, config.category3); // read from file
     // make copy of the points so we can use the original points for serial verification
+    endTime = get_wall_time();
+    finalTime = endTime -startTime; 
+    printf("Reading data took %f\n", finalTime);
     globalPoints = origPoints;
     srand(100); // need to set the random seed
 
@@ -117,7 +125,7 @@ int main(int argc, char *argv[]) {
   double* sumX = new double[k];
   double* sumY = new double[k];
   double* sumZ = new double[k];
-
+  startTime = get_wall_time();
   for (int e = 0; e < epochs; e++)
   {
 
@@ -155,6 +163,10 @@ int main(int argc, char *argv[]) {
   }
   // unscatter the broken up global points vector
   MPI_Gatherv(points_arr, sendCounts[rank], point_type, globalPoints.data(), sendCounts.data(), scatterDisplacements.data(), point_type, 0, MPI_COMM_WORLD);
+  endTime = get_wall_time();
+  double totalTime = endTime - startTime;
+  averageTime = totalTime / epochs;
+  printf("Algorithm took %f time to complete and averaged %f per epoch\n", totalTime, averageTime);
 
   if (rank == 0) {
     // run serial verification

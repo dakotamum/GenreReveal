@@ -24,6 +24,7 @@ int main(int argv, char *argc[]) {
   char category3[] = "instrumentalness";
 
   printf("Reading CSV...\n");
+
   vector<Point> points = readcsv(category1, category2, category3);
   vector<Point> centroids;
   srand(100); // need to set the random seed
