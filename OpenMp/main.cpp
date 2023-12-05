@@ -42,31 +42,33 @@ void kMeansClustering(int epochs, int k, vector<Point> &points, vector<Point> &c
     int c;
     double dist;
     int thread; 
-    int nPoints[k];
-    memset(nPoints, 0, sizeof(int)*k);
-    double sumX[k];
-    memset(sumX, 0.0, sizeof(double)*k);
-    double sumY[k];
-    memset(sumY, 0.0,sizeof(double)*k);
-    double sumZ[k];
-    memset(sumZ, 0.0, sizeof(double)*k);
+    int* nPoints = new int[k];
+    double* sumX = new double[k];
+    double* sumY = new double[k];
+    double* sumZ = new double[k];
+    Point centroid;
+    Point p;
   double startTime = get_wall_time();
-#pragma omp parallel num_threads(thread_count) default(none) shared(nPoints, sumX, sumY, sumZ, centroids, points, thread_count,k,epochs) private(thread, dist,c,j,e,clusterId,i)
+#pragma omp parallel num_threads(thread_count) default(none) shared(centroid, nPoints, sumX, sumY, sumZ, centroids, points, thread_count,k,epochs) private(p,thread, dist,c,j,e,clusterId,i)
   {
   for (e = 0; e < epochs; e++)
   {
     thread = omp_get_thread_num();
-    printf("OpenMp epoch: %d\n", e);
+    if (thread == 0){
+        printf("OpenMp epoch: %d\n", e);
+    }
     for ( c = 0; c<centroids.size(); c++) {
-      clusterId = c;
       Point centroid = centroids[c];
 #pragma omp for
       for (i = 0; i<points.size();++i) {
         Point p = points[i];
         dist = centroid.distance(p);
+	if (c == 2 && i < 10){
+		printf("ith %d dist: %f minDist: %f\n", i,dist, p.minDist);
+	}
         if (dist < p.minDist) {
           p.minDist = dist;
-          p.cluster = clusterId;
+          p.cluster = c;
         }
         points[i] = p;
       }
@@ -79,24 +81,23 @@ void kMeansClustering(int epochs, int k, vector<Point> &points, vector<Point> &c
 	sumY[i] = 0.0;	
 	sumZ[i] = 0.0;	
     }
-
-// Iterate over points to append data to centroids
-#pragma omp for reduction(+:sumX[clusterId]) reduction(+:sumY[clusterId]) reduction(+:sumZ[clusterId]) reduction(+:nPoints[clusterId])
-    for (i = 0; i< points.size(); ++i) {
+#pragma omp for reduction(+:sumX[:k]) reduction(+:sumY[:k]) reduction(+:sumZ[:k]) reduction(+:nPoints[:k])
+    for (i = 0; i < points.size(); ++i) {
       clusterId = points[i].cluster;
       nPoints[clusterId] += 1;
-      sumX[clusterId] += points[i].x; 
-      sumY[clusterId] +=  points[i].y; 
-      sumZ[clusterId] +=  points[i].z; 
-      points[i].minDist = __DBL_MAX__; // reset distance
+      sumX[clusterId] = points[i].x;
+      sumY[clusterId] = points[i].y;
+      sumZ[clusterId] = points[i].z;
+      points[i].minDist = __DBL_MAX__;
   }
+  printf("0:%d 1:%d 2:%d \n",nPoints[0], nPoints[1], nPoints[2]);
 #pragma omp for
-    for (int i = 0; i<centroids.size(); i++){
-      int clusterId = i;
+    for (int i = 0; i<k; i++){
+      clusterId = i;
       Point c = centroids[i];
-      c.x = sumX[clusterId] / nPoints[clusterId];
-      c.y = sumY[clusterId] / nPoints[clusterId];
-      c.z = sumZ[clusterId] / nPoints[clusterId];
+      c.x = sumX[clusterId] / (float) nPoints[clusterId];
+      c.y = sumY[clusterId] / (float) nPoints[clusterId];
+      c.z = sumZ[clusterId] / (float) nPoints[clusterId];
       centroids[i] = c;
     }
   }
@@ -105,6 +106,11 @@ void kMeansClustering(int epochs, int k, vector<Point> &points, vector<Point> &c
   double totalTime = endTime - startTime;
   double averageTime = totalTime / epochs;
   printf("Algorithm took %f time to complete and averaged %f per epoch\n", totalTime, averageTime);
+
+  delete(nPoints);
+  delete(sumX);
+  delete(sumY);
+  delete(sumZ);
 }
 
 int main(int argv, char *argc[]) {
