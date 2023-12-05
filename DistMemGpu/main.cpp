@@ -12,76 +12,10 @@ parsing a different dataset.
 #include <mpi.h>
 
 #include "cuda_kMeans.cuh"
-#include "csv.hpp"
+#include "readcsv.hpp"
+#include "serialVerify.hpp"
 
 using namespace std;
-
-vector<Point> readcsv(std::string cat1, std::string cat2, std::string cat3) {
-  vector<Point> points;
-  std::vector<Point> currentLine;
-  csv::CSVReader reader("tracks_features.csv");
-  for (csv::CSVRow &row : reader) {
-    points.push_back(Point(row[cat1].get<double>(), row[cat2].get<double>(),
-                           row[cat3].get<double>()));
-  }
-  return points;
-}
-
-void kMeansClustering_serial(int epochs, int k, vector<Point> &points, vector<Point> &centroids) {
-
-  for (int e = 0; e < epochs; e++)
-  {
-    std::cout << "Serial epoch:" << e << std::endl;
-    for (std::vector<Point>::iterator c = begin(centroids); c != end(centroids); ++c) {
-      // quick hack to get cluster index
-      int clusterId = c - begin(centroids);
-
-      for (std::vector<Point>::iterator it = points.begin(); it != points.end();
-          ++it) {
-
-        Point p = *it;
-        double dist = c->distance(p);
-        if (dist < p.minDist) {
-          p.minDist = dist;
-          p.cluster = clusterId;
-        }
-        *it = p;
-      }
-    }
-
-    std::vector<int> nPoints;
-    std::vector<double> sumX, sumY, sumZ;
-
-    // Initialize with zeroes
-    for (int j = 0; j < k; ++j) {
-      nPoints.push_back(0);
-      sumX.push_back(0.0);
-      sumY.push_back(0.0);
-      sumZ.push_back(0.0);
-    }
-
-    // Iterate over points to append data to centroids
-    for (std::vector<Point>::iterator it = points.begin(); it != points.end(); ++it) {
-      int clusterId = it->cluster;
-      nPoints[clusterId] += 1;
-      sumX[clusterId] += it->x;
-      sumY[clusterId] += it->y;
-      sumZ[clusterId] += it->z;
-
-      it->minDist = __DBL_MAX__; // reset distance
-    }
-
-
-    // Compute the new centroids
-    for (std::vector<Point>::iterator c = begin(centroids); c != end(centroids); ++c) {
-      int clusterId = c - begin(centroids);
-      c->x = sumX[clusterId] / nPoints[clusterId];
-      c->y = sumY[clusterId] / nPoints[clusterId];
-      c->z = sumZ[clusterId] / nPoints[clusterId];
-    }
-  }
-}
-
 
 int main(int argv, char *argc[]) {
   MPI_Init(NULL, NULL);
@@ -216,25 +150,9 @@ int main(int argv, char *argc[]) {
   // unscatter the broken up global points vector
   MPI_Gatherv(points_arr, sendCounts[rank], point_type, globalPoints.data(), sendCounts.data(), scatterDisplacements.data(), point_type, 0, MPI_COMM_WORLD);
 
-  if (rank == 0)
-  {
-      kMeansClustering_serial(epochs, k, origPoints, origCentroids);
-
-      // Validate serial results with cuda
-      int error_count = 0;
-      for (int i = 0; i < origPoints.size(); i++)
-      {
-        if (globalPoints[i].cluster != origPoints[i].cluster)
-        {
-          error_count++;
-        }
-      }
-      if (error_count > 0)
-        printf("%d out of %d point clusters do not match", error_count, origPoints.size());
-      else
-        printf("Parrallel implementation verified with serial");
-
-      printf("\n");
+  if (rank == 0) {
+    // run serial verification
+    kMeansClustering_serial(epochs, k, globalPoints, origPoints, origCentroids);
   }
 
   // Finalize the MPI environment.
