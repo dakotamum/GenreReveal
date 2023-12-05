@@ -42,6 +42,7 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
     csv
     gcov
+    shared_lib
     # Add any other necessary libraries or dependencies
 )
 

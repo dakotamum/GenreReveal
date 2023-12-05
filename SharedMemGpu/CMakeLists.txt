@@ -1,6 +1,6 @@
 # followed this tutorial to add the csv parser as dependency: https://medium.com/@justanotherdev/parsing-csvs-with-modern-c-b8c3cac3c742
 cmake_minimum_required(VERSION 3.9)
-project(GenreReveal CUDA CXX)
+project(SharedMemGpu CUDA CXX)
 set(CMAKE_CXX_STANDARD 17)
 
 # Clone csv-parser

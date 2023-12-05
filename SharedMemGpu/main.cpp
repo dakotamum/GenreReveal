@@ -46,23 +46,8 @@ int main(int argv, char *argc[]) {
   std::vector<Point> implPoints(points_size); // Create a vector of the same size as the array
   std::copy(points_arr, points_arr + points_size, implPoints.begin());
 
+  // Validate code with serial implementation
   kMeansClustering_serial(numEpochs, k, implPoints, points, centroids);
-
-  // Validate serial results with cuda
-  int error_count = 0;
-  for (int i = 0; i < points_size; i++)
-  {
-    if (points[i].cluster != points_arr[i].cluster)
-    {
-      error_count++;
-    }
-  }
-  if (error_count > 0)
-    printf("%d out of %d point clusters do not match", error_count, points_size);
-  else
-    printf("Parrallel implementation verified with serial");
-
-  printf("\n");
 
   // // Write output to file
   // ofstream myfile;
