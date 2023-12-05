@@ -34,6 +34,8 @@ Otherwise, each executable can be run with the following arguments:
 ```
 ./ExecutableName <category 1> <category 2> <category 3> <writeToFile (t/f)> <k> <epochs> [numThreads]
 ```
+note* ```[numThreads]``` is only for the OpenMp/SharedMemCPU implementation
+
 Within your build directory, 
 for Serial run:
 ```
