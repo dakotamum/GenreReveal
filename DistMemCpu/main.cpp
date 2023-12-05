@@ -11,11 +11,16 @@ parsing a different dataset.
 #include <vector>
 #include <mpi.h>
 
+#include "Config.hpp"
 #include "readcsv.hpp"
 #include "serialVerify.hpp"
 #include "Point.hpp"
 
-int main(int argv, char *argc[]) {
+int main(int argc, char *argv[]) {
+  Config config;
+  if (!config.parseInput(argc, argv))
+    return 1;
+  
   MPI_Init(NULL, NULL);
   int rank, size;
 
@@ -44,8 +49,8 @@ int main(int argv, char *argc[]) {
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
   // specified number of categories and epochs
-  int k = 3;
-  int epochs = 2;
+  int k = config.k;
+  int epochs = config.epochs;
 
   // declaration of vectors used in the various computations
   std::vector<int> sendCounts(size);
@@ -58,7 +63,7 @@ int main(int argv, char *argc[]) {
   std::vector<Point> centroids(k);
 
   if (rank == 0) {
-    origPoints = readcsv("danceability", "loudness", "valence"); // read from file
+    origPoints = readcsv(config.category1, config.category2, config.category3); // read from file
     // make copy of the points so we can use the original points for serial verification
     globalPoints = origPoints;
     srand(100); // need to set the random seed
@@ -145,16 +150,18 @@ int main(int argv, char *argc[]) {
   MPI_Gatherv(localPoints.data(), sendCounts[rank], point_type, globalPoints.data(), sendCounts.data(), scatterDisplacements.data(), point_type, 0, MPI_COMM_WORLD);
 
 
-    // output resultant points with their assigned clusters to file
+  // output resultant points with their assigned clusters to file
+  if (config.writeToFile) {
     std::ofstream myfile;
     myfile.open("tracks_output.csv");
-    myfile << "danceability" << "," << "loudness" << "," << "valence" << ",c" << std::endl;
+    myfile << config.category1 << "," << config.category2 << "," << config.category3 << ",c" << std::endl;
 
     for (std::vector<Point>::iterator it = globalPoints.begin(); it != globalPoints.end(); ++it) {
       myfile << it->x << "," << it->y << "," << it->z << "," << it->cluster
             << std::endl;
     }
     myfile.close();
+  }
 
   if (rank == 0) {
     // run serial verification
