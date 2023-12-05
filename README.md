@@ -20,6 +20,20 @@ make
 download tracks_features.csv from https://www.kaggle.com/datasets/rodolfofigueroa/spotify-12m-songs and add it to the build folder
 
 ### Running the project implementations:
+If the user does not provide arguments, the default runtime configuration of the executables is as follows:
+```
+    category 1  : danceablility
+    category 2  : loudness
+    category 3  : instrumentalness
+    writeToFile : true
+    k           : 1
+    epochs      : 10
+    numThreads  : 1
+```
+Otherwise, each executable can be run with the following arguments:
+```
+./ExecutableName <category 1> <category 2> <category 3> <writeToFile (t/f)> <k> <epochs> <numThreads (optional)>
+```
 Within your build directory, 
 for Serial run:
 ```

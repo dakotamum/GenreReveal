@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
   string category1 = config.category1;
   string category2 = config.category2;
   string category3 = config.category3;
-
+  
   printf("Reading csv...\n");
   double wallStart = get_wall_time();
   vector<Point> points = readcsv(category1, category2, category3); // read from file

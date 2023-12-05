@@ -10,39 +10,12 @@ parsing a different dataset.
 #include <iostream>
 #include <vector>
 
-#include "csv.hpp"
-
-// using namespace std;
-
-struct Point {
-  double x, y, z; // coordinates
-  int cluster;    // no default cluster
-  double minDist; // default infinite dist to nearest cluster
-
-  Point() : x(0.0), y(0.0), z(0.0), cluster(-1), minDist(__DBL_MAX__) {}
-
-  Point(double x, double y, double z)
-      : x(x), y(y), z(z), cluster(-1), minDist(__DBL_MAX__) {}
-
-  double distance(Point p) {
-    return (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y) +
-           (p.z - z) * (p.z - z);
-  }
-};
-
-std::vector<Point> readcsv(std::string cat1, std::string cat2, std::string cat3) {
-  std::vector<Point> points;
-  std::vector<Point> currentLine;
-  csv::CSVReader reader("./tracks_features.csv");
-for (csv::CSVRow &row : reader) {
-    points.push_back(Point(row[cat1].get<double>(), row[cat2].get<double>(),
-                           row[cat3].get<double>()));
-}
-  return points;
-}
+#include "Config.hpp"
+#include "Point.hpp"
+#include "readcsv.hpp"
 
 void kMeansClustering(int epochs, int k, std::string category1,
-                      std::string category2, std::string category3) {
+                      std::string category2, std::string category3, bool writeToFile) {
   std::vector<Point> points = readcsv(category1, category2, category3); // read from file
 
   std::vector<Point> centroids;
@@ -101,21 +74,28 @@ void kMeansClustering(int epochs, int k, std::string category1,
     }
   }
 
-  std::ofstream myfile;
-  myfile.open("tracks_output.csv");
-  myfile << category1 << "," << category2 << "," << category3 << ",c" << std::endl;
+  // write results to output file
+  if (writeToFile) {
+    std::ofstream myfile;
+    myfile.open("tracks_output.csv");
+    myfile << category1 << "," << category2 << "," << category3 << ",c" << std::endl;
 
-  for (std::vector<Point>::iterator it = points.begin(); it != points.end(); ++it) {
-    myfile << it->x << "," << it->y << "," << it->z << "," << it->cluster
-           << std::endl;
+    for (std::vector<Point>::iterator it = points.begin(); it != points.end(); ++it) {
+      myfile << it->x << "," << it->y << "," << it->z << "," << it->cluster
+            << std::endl;
+    }
+    myfile.close();
   }
-  myfile.close();
 }
 
-int main(int argv, char *argc[]) {
-  int numEpochs = 10;
-  int k = 3;
-  kMeansClustering(numEpochs, k, "danceability", "loudness",
-                   "instrumentalness");
+int main(int argc, char *argv[]) {
+  Config config; 
+  if (!config.parseInput(argc, argv))
+    return 1;
+
+  int numEpochs = config.epochs;
+  int k = config.k;
+  kMeansClustering(numEpochs, k, config.category1, config.category2,
+                   config.category3, config.writeToFile);
   return 0;
 }

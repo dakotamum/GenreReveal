@@ -168,6 +168,11 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  if (rank == 0) {
+    // run serial verification
+    kMeansClustering_serial(epochs, k, globalPoints, origPoints, origCentroids);
+  }
+
   MPI_Finalize();
   return 0;
 }
