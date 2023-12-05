@@ -14,7 +14,7 @@ struct Config {
   int epochs;
   int numThreads;
 
-  Config() : category1("danceablility"), category2("loudness"), category3("instrumentalness"), k(1), epochs(10), writeToFile(false), numThreads(1) {}
+  Config() : category1("danceability"), category2("loudness"), category3("instrumentalness"), k(1), epochs(10), writeToFile(false), numThreads(1) {}
 
   bool parseInput(int argc, char* argv[]) {
     // no arguments provided, output the default configuration

@@ -13,6 +13,7 @@ parsing a different dataset.
 #include <stdio.h>
 #include <stdlib.h>
 #include <chrono>
+#include "Config.hpp"
 #include "csv.hpp"
 #include <time.h>
 #include <sys/time.h>
@@ -109,14 +110,17 @@ void kMeansClustering(int epochs, int k, vector<Point> &points, vector<Point> &c
   delete(sumZ);
 }
 
-int main(int argv, char *argc[]) {
-  int thread_count = strtol(argc[1], NULL, 10);
-  int numEpochs = 10;
-  int k = 3;
-  string category1 = "danceability";
-  string category2 = "loudness";
-  string category3 = "instrumentalness";
-
+int main(int argc, char *argv[]) {
+  Config config;
+  if (!config.parseInput(argc, argv))
+    return 1;
+  int thread_count = config.numThreads;
+  int numEpochs = config.epochs;
+  int k = config.k;
+  string category1 = config.category1;
+  string category2 = config.category2;
+  string category3 = config.category3;
+  
   printf("Reading csv...\n");
   double wallStart = get_wall_time();
   vector<Point> points = readcsv(category1, category2, category3); // read from file
@@ -136,18 +140,21 @@ int main(int argv, char *argc[]) {
   kMeansClustering(numEpochs, k, points, centroids, thread_count);
   kMeansClustering_serial(numEpochs, k, points, originalPoints, originalCentroids);
 
-  wallStart = get_wall_time();
-  ofstream myfile;
-  myfile.open("tracks_output.csv");
-  myfile << category1 << "," << category2 << "," << category3 << ",c" << endl;
+  if (config.writeToFile)
+  {
+    wallStart = get_wall_time();
+    ofstream myfile;
+    myfile.open("tracks_output.csv");
+    myfile << category1 << "," << category2 << "," << category3 << ",c" << endl;
 
-  for (vector<Point>::iterator it = points.begin(); it != points.end(); ++it) {
-    myfile << it->x << "," << it->y << "," << it->z << "," << it->cluster
-           << endl;
+    for (vector<Point>::iterator it = points.begin(); it != points.end(); ++it) {
+      myfile << it->x << "," << it->y << "," << it->z << "," << it->cluster
+            << endl;
+    }
+    myfile.close();
+    wallEnd = get_wall_time();
+    printf("Program took %f s to write data\n", (wallEnd - wallStart));
   }
-  myfile.close();
-  wallEnd = get_wall_time();
-  printf("Program took %f s to write data\n", (wallEnd - wallStart));
 
   return 0;
 }

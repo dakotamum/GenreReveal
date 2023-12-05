@@ -150,17 +150,22 @@ int main(int argc, char *argv[]) {
   MPI_Gatherv(localPoints.data(), sendCounts[rank], point_type, globalPoints.data(), sendCounts.data(), scatterDisplacements.data(), point_type, 0, MPI_COMM_WORLD);
 
 
-  // output resultant points with their assigned clusters to file
-  if (config.writeToFile) {
-    std::ofstream myfile;
-    myfile.open("tracks_output.csv");
-    myfile << config.category1 << "," << config.category2 << "," << config.category3 << ",c" << std::endl;
+  if (rank == 0) {
+    // run serial verification
+    kMeansClustering_serial(epochs, k, globalPoints, origPoints, origCentroids);
+    
+    // output resultant points with their assigned clusters to file
+    if (config.writeToFile) {
+      std::ofstream myfile;
+      myfile.open("tracks_output.csv");
+      myfile << config.category1 << "," << config.category2 << "," << config.category3 << ",c" << std::endl;
 
-    for (std::vector<Point>::iterator it = globalPoints.begin(); it != globalPoints.end(); ++it) {
-      myfile << it->x << "," << it->y << "," << it->z << "," << it->cluster
-            << std::endl;
+      for (std::vector<Point>::iterator it = globalPoints.begin(); it != globalPoints.end(); ++it) {
+        myfile << it->x << "," << it->y << "," << it->z << "," << it->cluster
+              << std::endl;
+      }
+      myfile.close();
     }
-    myfile.close();
   }
 
   if (rank == 0) {
