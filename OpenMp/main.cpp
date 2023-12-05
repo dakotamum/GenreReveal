@@ -63,9 +63,6 @@ void kMeansClustering(int epochs, int k, vector<Point> &points, vector<Point> &c
       for (i = 0; i<points.size();++i) {
         Point p = points[i];
         dist = centroid.distance(p);
-	if (c == 2 && i < 10){
-		printf("ith %d dist: %f minDist: %f\n", i,dist, p.minDist);
-	}
         if (dist < p.minDist) {
           p.minDist = dist;
           p.cluster = c;
@@ -85,13 +82,12 @@ void kMeansClustering(int epochs, int k, vector<Point> &points, vector<Point> &c
     for (i = 0; i < points.size(); ++i) {
       clusterId = points[i].cluster;
       nPoints[clusterId] += 1;
-      sumX[clusterId] = points[i].x;
-      sumY[clusterId] = points[i].y;
-      sumZ[clusterId] = points[i].z;
+      sumX[clusterId] += points[i].x;
+      sumY[clusterId] += points[i].y;
+      sumZ[clusterId] += points[i].z;
       points[i].minDist = __DBL_MAX__;
   }
-  printf("0:%d 1:%d 2:%d \n",nPoints[0], nPoints[1], nPoints[2]);
-#pragma omp for
+#pragma omp for 
     for (int i = 0; i<k; i++){
       clusterId = i;
       Point c = centroids[i];
@@ -115,7 +111,7 @@ void kMeansClustering(int epochs, int k, vector<Point> &points, vector<Point> &c
 
 int main(int argv, char *argc[]) {
   int thread_count = strtol(argc[1], NULL, 10);
-  int numEpochs = 2;
+  int numEpochs = 10;
   int k = 3;
   string category1 = "danceability";
   string category2 = "loudness";
@@ -155,3 +151,4 @@ int main(int argv, char *argc[]) {
 
   return 0;
 }
+
