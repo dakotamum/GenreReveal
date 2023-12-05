@@ -1,6 +1,7 @@
 project(shared_lib)
 
 set(lib_srcs
+    Config.hpp
     Point.hpp
     readcsv.hpp
     serialVerify.hpp
