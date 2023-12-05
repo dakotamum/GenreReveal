@@ -11,11 +11,16 @@ parsing a different dataset.
 #include <vector>
 #include <mpi.h>
 
+#include "Config.hpp"
 #include "readcsv.hpp"
 #include "serialVerify.hpp"
 #include "Point.hpp"
 
-int main(int argv, char *argc[]) {
+int main(int argc, char *argv[]) {
+  Config config;
+  if (!config.parseInput(argc, argv))
+    return 1;
+  
   MPI_Init(NULL, NULL);
   int rank, size;
 
@@ -44,8 +49,8 @@ int main(int argv, char *argc[]) {
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
   // specified number of categories and epochs
-  int k = 3;
-  int epochs = 5;
+  int k = config.k;
+  int epochs = config.epochs;
 
   // declaration of vectors used in the various computations
   std::vector<int> sendCounts(size);
@@ -58,7 +63,7 @@ int main(int argv, char *argc[]) {
   std::vector<Point> centroids(k);
 
   if (rank == 0) {
-    origPoints = readcsv("danceability", "loudness", "valence"); // read from file
+    origPoints = readcsv(config.category1, config.category2, config.category3); // read from file
     // make copy of the points so we can use the original points for serial verification
     globalPoints = origPoints;
     srand(100); // need to set the random seed
@@ -111,7 +116,7 @@ int main(int argv, char *argc[]) {
       }
     }
 
-    // for storing local cluster counts and distance sums
+    // for storing local cluster counts and coordinate sums
     std::vector<int> localClusterCounts(k, 0);
     std::vector<double> localClusterSums(k*3, 0);
 
@@ -136,29 +141,31 @@ int main(int argv, char *argc[]) {
         centroids[j].y = globalClusterSums[j * 3 + 1] / globalClusterCounts[j];
         centroids[j].z = globalClusterSums[j * 3 + 2] / globalClusterCounts[j];
       }
+    }
 
     // broadcast centroids with their updated locations
     MPI_Bcast(centroids.data(), k, point_type, 0, MPI_COMM_WORLD);
-    }
   }
   // unscatter the broken up global points vector
   MPI_Gatherv(localPoints.data(), sendCounts[rank], point_type, globalPoints.data(), sendCounts.data(), scatterDisplacements.data(), point_type, 0, MPI_COMM_WORLD);
 
-  if (rank == 0)
-  {
+
+  if (rank == 0) {
     // run serial verification
     kMeansClustering_serial(epochs, k, globalPoints, origPoints, origCentroids);
-
+    
     // output resultant points with their assigned clusters to file
-    std::ofstream myfile;
-    myfile.open("tracks_output.csv");
-    myfile << "danceability" << "," << "loudness" << "," << "valence" << ",c" << std::endl;
+    if (config.writeToFile) {
+      std::ofstream myfile;
+      myfile.open("tracks_output.csv");
+      myfile << config.category1 << "," << config.category2 << "," << config.category3 << ",c" << std::endl;
 
-    for (std::vector<Point>::iterator it = globalPoints.begin(); it != globalPoints.end(); ++it) {
-      myfile << it->x << "," << it->y << "," << it->z << "," << it->cluster
-            << std::endl;
+      for (std::vector<Point>::iterator it = globalPoints.begin(); it != globalPoints.end(); ++it) {
+        myfile << it->x << "," << it->y << "," << it->z << "," << it->cluster
+              << std::endl;
+      }
+      myfile.close();
     }
-    myfile.close();
   }
 
   MPI_Finalize();
