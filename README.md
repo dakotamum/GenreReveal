@@ -32,7 +32,7 @@ If the user does not provide arguments, the default runtime configuration of the
 ```
 Otherwise, each executable can be run with the following arguments:
 ```
-./ExecutableName <category 1> <category 2> <category 3> <writeToFile (t/f)> <k> <epochs> <numThreads (optional)>
+./ExecutableName <category 1> <category 2> <category 3> <writeToFile (t/f)> <k> <epochs> [numThreads]
 ```
 Within your build directory, 
 for Serial run:
