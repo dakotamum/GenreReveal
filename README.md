@@ -10,7 +10,7 @@ module load cuda/12.2.0
 
 ### Cloning and Building the project:
 ```
-git clone https://github.com/kodamums/GenreReveal
+git clone https://github.com/dakotamum/GenreReveal
 cd GenreReveal
 mkdir build
 cd build
