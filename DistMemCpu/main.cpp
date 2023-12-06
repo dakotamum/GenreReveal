@@ -163,10 +163,9 @@ int main(int argc, char *argv[]) {
     endTime = get_wall_time();
     double totalTime = endTime - startTime;
     averageTime = totalTime / epochs;
-    printf("Algorithm took %f time to complete and averaged %f per epoch\n", totalTime, averageTime);
+    printf("Algorithm took %f seconds to complete and averaged %f seconds per epoch\n", totalTime, averageTime);
 
   }
-
 
   if (rank == 0) {
     // run serial verification
@@ -174,6 +173,7 @@ int main(int argc, char *argv[]) {
     
     // output resultant points with their assigned clusters to file
     if (config.writeToFile) {
+      std::cout << "Writing results to file..." << std::endl;
       std::ofstream myfile;
       myfile.open("tracks_output.csv");
       myfile << config.category1 << "," << config.category2 << "," << config.category3 << ",c" << std::endl;

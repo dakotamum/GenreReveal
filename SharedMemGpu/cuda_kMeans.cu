@@ -181,7 +181,7 @@ namespace Cuda_KMeans {
 	  double endTime = get_wall_time();
 	  double totalTime = endTime - startTime;
 	  double averageTime = totalTime / epochs;
-	  printf("Algorithm took %f time to complete and averaged %f per epoch\n", totalTime, averageTime);
+	  printf("Algorithm took %f seconds to complete and averaged %f seconds per epoch\n", totalTime, averageTime);
 
         // Copy points memory from device to host
         cudaMemcpy(points, cuda_points, points_size * sizeof(Point), cudaMemcpyDeviceToHost);

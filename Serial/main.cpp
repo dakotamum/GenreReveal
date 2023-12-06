@@ -77,7 +77,7 @@ void kMeansClustering(int epochs, int k, std::string category1,
   double endTime = get_wall_time();
   double totalTime = endTime - startTime;
   double averageTime = totalTime / epochs;
-  printf("Algorithm took %f time to complete and averaged %f per epoch\n", totalTime, averageTime);
+  printf("Algorithm took %f seconds to complete and averaged %f seconds per epoch\n", totalTime, averageTime);
 
   // write results to output file
   if (writeToFile) {
