@@ -22,6 +22,7 @@ include_directories(${csv-parser_dir}/single_include)
 add_subdirectory(SharedCode)
 add_subdirectory(Serial)
 add_subdirectory(DistMemCpu)
+add_subdirectory(DistMemGpu)
 add_subdirectory(SharedMemCpu)
 add_subdirectory(SharedMemGpu)
 
