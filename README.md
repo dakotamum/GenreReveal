@@ -17,7 +17,8 @@ cd build
 cmake ../../GenreReveal
 make
 ```
-download tracks_features.csv from https://www.kaggle.com/datasets/rodolfofigueroa/spotify-12m-songs and add it to the build folder
+The executables for each implementation will be located in build/dist/bin
+download tracks_features.csv from https://www.kaggle.com/datasets/rodolfofigueroa/spotify-12m-songs and add it to the build/dist/bin folder
 
 ### Running the project implementations:
 If the user does not provide arguments, the default runtime configuration of the executables is as follows:
@@ -63,7 +64,7 @@ mpiexec -n <# of cores> ./dist/bin/DistMemGpu
 ### Visualization
 After running one of the above data is stored in ```tracks_output.csv```
 
-Within the build folder run
+Within the build/dist/bin folder run
 ```
 python plot.py
 ```
